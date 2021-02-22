@@ -335,7 +335,7 @@ class Group_LDAP extends BackendUtility implements GroupInterface, IGroupLDAP, I
 		return $this->filterValidGroups($groups);
 	}
 
-	private function walkNestedGroups(string $dn, Closure $fetcher, array $list, array &$seen): array {
+	private function walkNestedGroups(string $dn, Closure $fetcher, array $list, array &$seen = []): array {
 		$nesting = (int)$this->access->connection->ldapNestedGroups;
 		// depending on the input, we either have a list of DNs or a list of LDAP records
 		// also, the output expects either DNs or records. Testing the first element should suffice.
@@ -852,7 +852,7 @@ class Group_LDAP extends BackendUtility implements GroupInterface, IGroupLDAP, I
 				$dn = "";
 			}
 
-			$allGroups = $this->walkNestedGroups($dn, $fetcher, $groups);
+			$allGroups = $this->walkNestedGroups($dn, $fetcher, $groups, $seen);
 		}
 		$visibleGroups = $this->filterValidGroups($allGroups);
 		return array_intersect_key($allGroups, $visibleGroups);
