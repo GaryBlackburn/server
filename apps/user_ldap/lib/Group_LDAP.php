@@ -245,6 +245,7 @@ class Group_LDAP extends BackendUtility implements GroupInterface, IGroupLDAP, I
 	private function _groupMembers(string $dnGroup, ?array &$seen = null): array {
 		if ($seen === null) {
 			$seen = [];
+			$excludeFromResult = $dnGroup;
 		}
 		$allMembers = [];
 		if (array_key_exists($dnGroup, $seen)) {
@@ -297,6 +298,12 @@ class Group_LDAP extends BackendUtility implements GroupInterface, IGroupLDAP, I
 		}
 
 		$allMembers += $this->getDynamicGroupMembers($dnGroup);
+		if (isset($excludeFromResult)) {
+			$index = array_search($excludeFromResult, $allMembers, true);
+			if ($index !== false) {
+				unset($allMembers[$index]);
+			}
+		}
 
 		$this->access->connection->writeToCache($cacheKey, $allMembers);
 		if (isset($attemptedLdapMatchingRuleInChain)
@@ -354,19 +361,20 @@ class Group_LDAP extends BackendUtility implements GroupInterface, IGroupLDAP, I
 			return $list;
 		}
 
-		$seen = [];
 		while ($record = array_shift($list)) {
-			$recordDN = $recordMode ? $record['dn'][0] : $record;
+			$recordDN = $record['dn'][0] ?? $record;
 			if ($recordDN === $dn || array_key_exists($recordDN, $seen)) {
 				// Prevent loops
 				continue;
 			}
 			$fetched = $fetcher($record);
 			$list = array_merge($list, $fetched);
-			$seen[$recordDN] = $record;
+			if(!isset($seen[$recordDN]) || is_bool($seen[$recordDN]) && is_array($record)) {
+				$seen[$recordDN] = $record;
+			}
 		}
 
-		return $recordMode ? $seen : array_keys($seen);
+		return $recordMode ? array_filter($seen, "is_array") : array_keys($seen);
 	}
 
 	/**
